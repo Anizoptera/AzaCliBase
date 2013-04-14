@@ -443,11 +443,17 @@ abstract class Base
 	/**
 	 * Returns global shared libevent base
 	 *
-	 * @return EventBase
+	 * @param bool $create [optional] <p>
+	 * Create new event base if there is no initialized one.
+	 * </p>
+	 *
+	 * @return EventBase|null
 	 */
-	public static function getEventBase()
+	public static function getEventBase($create = true)
 	{
-		return self::$eventBase ?: self::$eventBase = new EventBase();
+		return self::$eventBase ?: ($create
+				? (self::$eventBase = new EventBase())
+				: null);
 	}
 
 	/**
