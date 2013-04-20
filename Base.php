@@ -759,10 +759,8 @@ abstract class Base
 	 */
 	public static function getTimeForLog()
 	{
-		$mt = explode(' ', microtime());
-		return '[' . date('Y.m.d H:i:s', $mt[1])
-		       . '.' . sprintf('%06d', $mt[0] * 1000000)
-		       . ' ' . date('O') . ']';
+		list($usec, $sec) = explode(' ', microtime());
+		return date(sprintf('[Y.m.d H:i:s.%d O]', $usec * 1.0E+6), $sec);
 	}
 }
 
