@@ -178,7 +178,7 @@ abstract class Base
 	public static $isMaster = true;
 
 	/**
-	 * Process signals
+	 * POSIX (Unix) signals reference
 	 *
 	 * SIG_DFL
 	 * specifies the default action for the particular signal.
@@ -405,15 +405,6 @@ abstract class Base
 		 */
 		SIGPROF   => 'SIGPROF',
 		/*
-		 * Window size change. This is generated on some systems (including GNU)
-		 * when the terminal driver's record of the number of rows and columns on
-		 * the screen is changed. The default action is to ignore it.
-		 * If a program does full-screen display, it should handle SIGWINCH.
-		 * When the signal arrives, it should fetch the new screen size and
-		 * reformat its display accordingly.
-		 */
-		SIGWINCH  => 'SIGWINCH',
-		/*
 		 * Information request. In 4.4 BSD and the GNU system, this signal is sent to all
 		 * the processes in the foreground process group of the controlling terminal when
 		 * the user types the STATUS character in canonical mode.;
@@ -422,6 +413,15 @@ abstract class Base
 		 * Otherwise the default is to do nothing.
 		 */
 		28        => 'SIGINFO',
+		/*
+		 * Window size change. This is generated on some systems (including GNU)
+		 * when the terminal driver's record of the number of rows and columns on
+		 * the screen is changed. The default action is to ignore it.
+		 * If a program does full-screen display, it should handle SIGWINCH.
+		 * When the signal arrives, it should fetch the new screen size and
+		 * reformat its display accordingly.
+		 */
+		SIGWINCH  => 'SIGWINCH',
 		/*
 		 * The SIGUSR1 and SIGUSR2 signals are set aside for you to use any way you want.
 		 * They're useful for simple interprocess communication, if you write a signal
@@ -739,16 +739,25 @@ abstract class Base
 	 * Sets current process title (if possible)
 	 *
 	 * @uses proctitle
+	 *
+	 * @see cli_set_process_title
 	 * @see setproctitle
+	 *
+	 * @link https://wiki.php.net/rfc/cli_process_title#specification
 	 * @link http://php.net/setproctitle
 	 *
 	 * @param string $title Process title
 	 */
 	public static function setProcessTitle($title)
 	{
-		/** @noinspection PhpUndefinedFunctionInspection */
-		function_exists('setproctitle')
-			&& setproctitle($title);
+		// PHP 5.5 cli_set_process_title
+		if (function_exists('cli_set_process_title')) {
+			cli_set_process_title($title);
+		}
+		// PECL Proctitle (not recommended, considered buggy)
+		else if (function_exists('setproctitle')) {
+			setproctitle($title);
+		}
 	}
 
 
