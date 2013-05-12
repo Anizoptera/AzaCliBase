@@ -171,11 +171,11 @@ abstract class Base
 	public static $hasLibevent;
 
 	/**
-	 * Whether current process is master
+	 * Whether current process has parent process (so this is child)
 	 *
 	 * @var bool
 	 */
-	public static $isMaster = true;
+	public static $hasParent = false;
 
 	/**
 	 * POSIX (Unix) signals reference
@@ -478,7 +478,7 @@ abstract class Base
 	 *
 	 * @return string
 	 */
-	public static function signalName($signo, &$found = null)
+	public static function getSignalName($signo, &$found = null)
 	{
 		return ($found = isset(self::$signals[$signo]))
 				? self::$signals[$signo]
@@ -580,6 +580,9 @@ abstract class Base
 	 */
 	public static function fork()
 	{
+		// TODO: Event dispatcher for base manipulations?
+		$base = self::$eventBase;
+
 		/*
 		 * pcntl_fork triggers E_WARNING errors.
 		 * For Ubuntu error codes indicate the following:
@@ -587,19 +590,23 @@ abstract class Base
 		 * Error 11: Resource temporarily unavailable
 		 * Error 12: Cannot allocate memory
 		 */
-		$pid = pcntl_fork();
-		if (-1 === $pid) {
+		$base && $base->beforeFork();
+		if (-1 === $pid = pcntl_fork()) {
+			$base && $base->afterFork();
 			throw new Exception(
 				'Could not fork'
 			);
 		}
 		// Child
 		else if (0 === $pid) {
-			self::$isMaster = false;
+			self::$hasParent = true;
 
-			// Reinitialize main event base in child process
-			self::$eventBase
-				&& self::$eventBase->reinitialize();
+			// Reinitialize event base in child process
+			$base && $base->reinitialize();
+		}
+		// Parent
+		else {
+			$base && $base->afterFork();
 		}
 		return $pid;
 	}
@@ -617,7 +624,7 @@ abstract class Base
 		}
 
 		// Make the current process a session leader
-		self::$isMaster = true;
+		self::$hasParent = false;
 		if (posix_setsid() === -1) {
 			throw new Exception(
 				'Could not detach from terminal'
@@ -769,7 +776,10 @@ abstract class Base
 	public static function getTimeForLog()
 	{
 		list($usec, $sec) = explode(' ', microtime());
-		return date(sprintf('[Y.m.d H:i:s.%d O]', $usec * 1.0E+6), $sec);
+		return date(sprintf(
+			'[Y.m.d H:i:s.%0-6.6s O]',
+			(int)($usec * 1.0E+6)
+		), $sec);
 	}
 }
 
