@@ -5,11 +5,27 @@ Anizoptera CMF component with basic functionality and helper methods for CLI and
 
 https://github.com/Anizoptera/AzaCliBase
 
-[![Build Status](https://secure.travis-ci.org/Anizoptera/AzaCliBase.png?branch=master)](http://travis-ci.org/Anizoptera/AzaCliBase)
+[![Build Status][TravisImage]][Travis]
+
+
+Table of Contents
+-----------------
+
+1. [Introduction](#introduction)
+2. [Requirements](#requirements)
+3. [Optional requirements](#optional-requirements)
+4. [Installation](#installation)
+5. [Credits](#credits)
+6. [License](#license)
+7. [Links](#links)
+
+
+Introduction
+------------
 
 Provides convenient API for commonly needed tasks in CLI or Daemon applications.
 
-Some features:
+**Some features:**
 
 * Detaching process from the controlling terminal;
 * Fork wrapper (with libevent base reinitializing if needed);
@@ -20,10 +36,6 @@ Some features:
 * Kill process tree;
 * Change process title;
 *  ... other;
-
-AzaCliBase is a part of [Anizoptera CMF](https://github.com/Anizoptera), written by [Amal Samally](http://azagroup.ru/#amal) (amal.samally at gmail.com) and [AzaGroup](http://azagroup.ru/) team.
-
-Licensed under the MIT License.
 
 
 Requirements
@@ -46,7 +58,7 @@ Installation
 ------------
 
 The recommended way to install AzaCliBase is [through composer](http://getcomposer.org).
-You can see [package information on Packagist.](https://packagist.org/packages/aza/clibase)
+You can see [package information on Packagist][ComposerPackage].
 
 ```JSON
 {
@@ -57,7 +69,32 @@ You can see [package information on Packagist.](https://packagist.org/packages/a
 ```
 
 
+Credits
+-------
+
+AzaCliBase is a part of [Anizoptera CMF][], written by [Amal Samally][] (amal.samally at gmail.com) and [AzaGroup][] team.
+
+
 License
 -------
 
-MIT, see [LICENSE.md](LICENSE.md)
+Released under the [MIT](LICENSE.md) license.
+
+
+Links
+-----
+
+* [Composer package][ComposerPackage]
+* [Last build on the Travis CI][Travis]
+* [Project profile on the Ohloh](https://www.ohloh.net/p/AzaCliBase)
+* Other Anizoptera CMF components on the [GitHub][Anizoptera CMF] / [Packagist](https://packagist.org/packages/aza)
+* (RU) [AzaGroup team blog][AzaGroup]
+
+
+
+[Anizoptera CMF]:  https://github.com/Anizoptera
+[Amal Samally]:    http://azagroup.ru/about/#amal
+[AzaGroup]:        http://azagroup.ru/
+[ComposerPackage]: https://packagist.org/packages/aza/clibase
+[TravisImage]:     https://secure.travis-ci.org/Anizoptera/AzaCliBase.png?branch=master
+[Travis]:          http://travis-ci.org/Anizoptera/AzaCliBase

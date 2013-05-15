@@ -171,14 +171,14 @@ abstract class Base
 	public static $hasLibevent;
 
 	/**
-	 * Whether current process is master
+	 * Whether current process has parent process (so this is child)
 	 *
 	 * @var bool
 	 */
-	public static $isMaster = true;
+	public static $hasParent = false;
 
 	/**
-	 * Process signals
+	 * POSIX (Unix) signals reference
 	 *
 	 * SIG_DFL
 	 * specifies the default action for the particular signal.
@@ -405,15 +405,6 @@ abstract class Base
 		 */
 		SIGPROF   => 'SIGPROF',
 		/*
-		 * Window size change. This is generated on some systems (including GNU)
-		 * when the terminal driver's record of the number of rows and columns on
-		 * the screen is changed. The default action is to ignore it.
-		 * If a program does full-screen display, it should handle SIGWINCH.
-		 * When the signal arrives, it should fetch the new screen size and
-		 * reformat its display accordingly.
-		 */
-		SIGWINCH  => 'SIGWINCH',
-		/*
 		 * Information request. In 4.4 BSD and the GNU system, this signal is sent to all
 		 * the processes in the foreground process group of the controlling terminal when
 		 * the user types the STATUS character in canonical mode.;
@@ -422,6 +413,15 @@ abstract class Base
 		 * Otherwise the default is to do nothing.
 		 */
 		28        => 'SIGINFO',
+		/*
+		 * Window size change. This is generated on some systems (including GNU)
+		 * when the terminal driver's record of the number of rows and columns on
+		 * the screen is changed. The default action is to ignore it.
+		 * If a program does full-screen display, it should handle SIGWINCH.
+		 * When the signal arrives, it should fetch the new screen size and
+		 * reformat its display accordingly.
+		 */
+		SIGWINCH  => 'SIGWINCH',
 		/*
 		 * The SIGUSR1 and SIGUSR2 signals are set aside for you to use any way you want.
 		 * They're useful for simple interprocess communication, if you write a signal
@@ -443,11 +443,17 @@ abstract class Base
 	/**
 	 * Returns global shared libevent base
 	 *
-	 * @return EventBase
+	 * @param bool $create [optional] <p>
+	 * Create new event base if there is no initialized one.
+	 * </p>
+	 *
+	 * @return EventBase|null
 	 */
-	public static function getEventBase()
+	public static function getEventBase($create = true)
 	{
-		return self::$eventBase ?: self::$eventBase = new EventBase();
+		return self::$eventBase ?: ($create
+				? (self::$eventBase = new EventBase())
+				: null);
 	}
 
 	/**
@@ -472,7 +478,7 @@ abstract class Base
 	 *
 	 * @return string
 	 */
-	public static function signalName($signo, &$found = null)
+	public static function getSignalName($signo, &$found = null)
 	{
 		return ($found = isset(self::$signals[$signo]))
 				? self::$signals[$signo]
@@ -574,6 +580,9 @@ abstract class Base
 	 */
 	public static function fork()
 	{
+		// TODO: Event dispatcher for base manipulations?
+		$base = self::$eventBase;
+
 		/*
 		 * pcntl_fork triggers E_WARNING errors.
 		 * For Ubuntu error codes indicate the following:
@@ -581,19 +590,23 @@ abstract class Base
 		 * Error 11: Resource temporarily unavailable
 		 * Error 12: Cannot allocate memory
 		 */
-		$pid = pcntl_fork();
-		if (-1 === $pid) {
+		$base && $base->beforeFork();
+		if (-1 === $pid = pcntl_fork()) {
+			$base && $base->afterFork();
 			throw new Exception(
 				'Could not fork'
 			);
 		}
 		// Child
 		else if (0 === $pid) {
-			self::$isMaster = false;
+			self::$hasParent = true;
 
-			// Reinitialize main event base in child process
-			self::$eventBase
-				&& self::$eventBase->reinitialize();
+			// Reinitialize event base in child process
+			$base && $base->reinitialize();
+		}
+		// Parent
+		else {
+			$base && $base->afterFork();
 		}
 		return $pid;
 	}
@@ -611,7 +624,7 @@ abstract class Base
 		}
 
 		// Make the current process a session leader
-		self::$isMaster = true;
+		self::$hasParent = false;
 		if (posix_setsid() === -1) {
 			throw new Exception(
 				'Could not detach from terminal'
@@ -733,16 +746,25 @@ abstract class Base
 	 * Sets current process title (if possible)
 	 *
 	 * @uses proctitle
+	 *
+	 * @see cli_set_process_title
 	 * @see setproctitle
+	 *
+	 * @link https://wiki.php.net/rfc/cli_process_title#specification
 	 * @link http://php.net/setproctitle
 	 *
 	 * @param string $title Process title
 	 */
 	public static function setProcessTitle($title)
 	{
-		/** @noinspection PhpUndefinedFunctionInspection */
-		function_exists('setproctitle')
-			&& setproctitle($title);
+		// PHP 5.5 cli_set_process_title
+		if (function_exists('cli_set_process_title')) {
+			cli_set_process_title($title);
+		}
+		// PECL Proctitle (not recommended, considered buggy)
+		else if (function_exists('setproctitle')) {
+			setproctitle($title);
+		}
 	}
 
 
@@ -753,10 +775,11 @@ abstract class Base
 	 */
 	public static function getTimeForLog()
 	{
-		$mt = explode(' ', microtime());
-		return '[' . date('Y.m.d H:i:s', $mt[1])
-		       . '.' . sprintf('%06d', $mt[0] * 1000000)
-		       . ' ' . date('O') . ']';
+		list($usec, $sec) = explode(' ', microtime());
+		return date(sprintf(
+			'[Y.m.d H:i:s.%0-6.6s O]',
+			(int)($usec * 1.0E+6)
+		), $sec);
 	}
 }
 
