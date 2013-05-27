@@ -1,8 +1,7 @@
 <?php
 
 namespace Aza\Components\CliBase;
-use Aza\Components\LibEvent\EventBase;
-use Aza\Kernel\Exceptions\Exception;
+use Aza\Components\CliBase\Exceptions\Exception;
 
 /**
  * Basic functionality and helper methods
@@ -162,13 +161,6 @@ abstract class Base
 	 * @var bool
 	 */
 	public static $hasForkSupport;
-
-	/**
-	 * Whether Libevent supported
-	 *
-	 * @var bool
-	 */
-	public static $hasLibevent;
 
 	/**
 	 * Whether current process has parent process (so this is child)
@@ -432,39 +424,6 @@ abstract class Base
 		SIGUSR2   => 'SIGUSR2',
 	);
 
-	/**
-	 * Global libevent base
-	 *
-	 * @var EventBase|null
-	 */
-	private static $eventBase;
-
-
-	/**
-	 * Returns global shared libevent base
-	 *
-	 * @param bool $create [optional] <p>
-	 * Create new event base if there is no initialized one.
-	 * </p>
-	 *
-	 * @return EventBase|null
-	 */
-	public static function getEventBase($create = true)
-	{
-		return self::$eventBase ?: ($create
-				? (self::$eventBase = new EventBase())
-				: null);
-	}
-
-	/**
-	 * Cleans global shared libevent base
-	 */
-	public static function cleanEventBase()
-	{
-		self::$eventBase && self::$eventBase->free();
-		self::$eventBase = null;
-	}
-
 
 	/**
 	 * Returns name of the signal
@@ -572,17 +531,18 @@ abstract class Base
 	/**
 	 * Forks the currently running process
 	 *
-	 * @throws Exception if could not fork
+	 * @param \Closure $parentCb [optional] <p>
+	 * Callback for the parent process. Called after fork.
+	 * </p>
 	 *
 	 * @return int the PID of the child process is returned
 	 * in the parent's thread of execution, and a 0 is
 	 * returned in the child's thread of execution.
+	 *
+	 * @throws Exception if could not fork
 	 */
-	public static function fork()
+	public static function fork($parentCb = null)
 	{
-		// TODO: Event dispatcher for base manipulations?
-		$base = self::$eventBase;
-
 		/*
 		 * pcntl_fork triggers E_WARNING errors.
 		 * For Ubuntu error codes indicate the following:
@@ -590,24 +550,21 @@ abstract class Base
 		 * Error 11: Resource temporarily unavailable
 		 * Error 12: Cannot allocate memory
 		 */
-		$base && $base->beforeFork();
 		if (-1 === $pid = pcntl_fork()) {
-			$base && $base->afterFork();
-			throw new Exception(
-				'Could not fork'
-			);
+			$parentCb && $parentCb($pid);
+			throw new Exception('Could not fork');
 		}
+
 		// Child
 		else if (0 === $pid) {
 			self::$hasParent = true;
-
-			// Reinitialize event base in child process
-			$base && $base->reinitialize();
 		}
+
 		// Parent
 		else {
-			$base && $base->afterFork();
+			$parentCb && $parentCb($pid);
 		}
+
 		return $pid;
 	}
 
@@ -624,12 +581,12 @@ abstract class Base
 		}
 
 		// Make the current process a session leader
-		self::$hasParent = false;
-		if (posix_setsid() === -1) {
+		if (-1 === posix_setsid()) {
 			throw new Exception(
 				'Could not detach from terminal'
 			);
 		}
+		self::$hasParent = false;
 	}
 
 
@@ -797,6 +754,3 @@ defined('IS_WIN') || define('IS_WIN', DIRECTORY_SEPARATOR !== '/');
 Base::$hasForkSupport = PHP_SAPI === 'cli'
                         && function_exists('pcntl_fork')
                         && function_exists('posix_getpid');
-
-// libevent extension
-Base::$hasLibevent = extension_loaded('libevent');

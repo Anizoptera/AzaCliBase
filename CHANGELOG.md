@@ -4,6 +4,10 @@ CHANGELOG
 ## Version 1.1 (work in progress)
 
 
+26.05.2013
+- **FIXED:** Removed usage of not public `Aza\Kernel\Exceptions\Exception` (Issue #1, amal)
+- **CHANGE:** Event loops management removed (amal)
+
 03.05.2013
 - **IMPROVED:** Event base before/after fork hooks support (amal)
 
