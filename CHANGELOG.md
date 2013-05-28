@@ -1,9 +1,10 @@
 CHANGELOG
 =========
 
-## Version 1.1 (work in progress)
+## Version 1.2 (work in progress)
 
 
+## Version 1.1 (28.05.2013)
 26.05.2013
 - **FIXED:** Removed usage of not public `Aza\Kernel\Exceptions\Exception` (Issue #1, amal)
 - **CHANGE:** Event loops management removed (amal)
